@@ -878,7 +878,7 @@
     border-radius: 50%; touch-action: none; cursor: grab; will-change: transform;
     background: radial-gradient(circle at 34% 28%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.35) 28%, rgba(255,214,150,.28) 62%, rgba(255,180,90,.18) 100%);
     border: 1.5px solid rgba(255,255,255,.75);
-    box-shadow: 0 0 0 7px rgba(255,255,255,.14), 0 12px 30px rgba(0,0,0,.4), 0 0 36px 8px rgba(255,196,110,.5);
+    box-shadow: 0 0 0 7px rgba(255,255,255,.2), 0 12px 30px rgba(0,0,0,.4), 0 0 50px 16px rgba(255,196,110,.75), 0 0 110px 40px rgba(255,170,80,.4);
     backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
   }
   .chroma-wrap.has-orb .chroma-orb::before {
@@ -889,11 +889,23 @@
     content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px;
     border-radius: 50%; background: rgba(255,255,255,.95); box-shadow: 0 0 12px 3px rgba(255,255,255,.8);
   }
+  .chroma-orb-light {
+    position: absolute; left: 50%; top: 50%; width: 460px; height: 460px; margin: -230px 0 0 -230px;
+    border-radius: 50%; pointer-events: none; mix-blend-mode: screen;
+    background: radial-gradient(circle, rgba(255,236,190,.75) 0%, rgba(255,205,125,.42) 22%, rgba(255,180,90,.18) 46%, rgba(255,170,80,0) 70%);
+  }
   .chroma-wrap.has-orb .chroma-orb.is-dragging { cursor: grabbing; }
   .chroma-wrap.has-orb .chroma-orb.is-dragging::before { animation: none; opacity: 0; }
   .chroma-wrap.is-gated .chroma-orb { display: none !important; }
   @keyframes orb-pulse { 0% { transform: scale(.75); opacity: .9; } 100% { transform: scale(1.25); opacity: 0; } }
-  @media (max-width: 640px) { .chroma-wrap { --r: 190px; } }
+  @media (max-width: 640px) {
+    .chroma-wrap { --r: 250px; }
+    /* bigger fully-coloured core, softer falloff to grayscale */
+    .grid-overlay {
+      mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), transparent 0%, transparent 50%, rgba(0,0,0,.4) 68%, rgba(0,0,0,.8) 86%, black 100%);
+      -webkit-mask-image: radial-gradient(circle var(--r) at var(--x) var(--y), transparent 0%, transparent 50%, rgba(0,0,0,.4) 68%, rgba(0,0,0,.8) 86%, black 100%);
+    }
+  }
 
   /* logged-out visitors get a blurred, non-interactive grid instead of the
      cards, with a prompt to sign in — same content is fully visible once
@@ -1577,7 +1589,7 @@
       <div class="member-grid" id="member-grid"></div>
       <div class="grid-overlay" aria-hidden="true"></div>
       <div class="grid-fade" aria-hidden="true"></div>
-      <div class="chroma-orb" id="chromaOrb" aria-hidden="true"></div>
+      <div class="chroma-orb" id="chromaOrb" aria-hidden="true"><span class="chroma-orb-light"></span></div>
       <div class="family-gate" id="familyGate" aria-hidden="true">
         <div class="family-gate-box">
           <p data-i18n="scrollGateText">Войдите в аккаунт</p>
@@ -2633,8 +2645,10 @@
       if (orb && window.matchMedia('(hover: none), (pointer: coarse)').matches) {
         chromaWrap.classList.add('has-orb');
         var orbDrag = null, orbPos = { x: 0, y: 0 };
-        function placeOrb(x, y, instant) {
+        var orbScreen = { x: window.innerWidth / 2, y: window.innerHeight * 0.5 };
+        function placeOrb(x, y, instant, fromScroll) {
           var r = chromaWrap.getBoundingClientRect();
+          if (!fromScroll) { orbScreen.x = r.left + x; orbScreen.y = r.top + y; }
           x = Math.max(0, Math.min(r.width, x)); y = Math.max(0, Math.min(r.height, y));
           orbPos.x = x; orbPos.y = y;
           orb.style.transform = 'translate(' + (x - 31) + 'px,' + (y - 31) + 'px)';
@@ -2644,7 +2658,18 @@
           else if (!raf) raf = requestAnimationFrame(tick);
         }
         var r0 = chromaWrap.getBoundingClientRect();
-        placeOrb(r0.width / 2, Math.min(r0.height / 2, 260), true);
+        placeOrb(r0.width / 2, 200, true);
+        orbScreen.y = window.innerHeight * 0.5;
+        // the lens rides along with the page: same spot on screen while scrolling
+        var orbScrollRaf = 0;
+        window.addEventListener('scroll', function () {
+          if (orbScrollRaf || orbDrag !== null) return;
+          orbScrollRaf = requestAnimationFrame(function () {
+            orbScrollRaf = 0;
+            var r = chromaWrap.getBoundingClientRect();
+            placeOrb(orbScreen.x - r.left, orbScreen.y - r.top, true, true);
+          });
+        }, { passive: true });
         orb.addEventListener('pointerdown', function (e) {
           orbDrag = e.pointerId; orb.setPointerCapture(e.pointerId); orb.classList.add('is-dragging'); e.preventDefault();
         });
