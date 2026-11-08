@@ -2557,7 +2557,7 @@
       var style = '--i:' + (i % 6) + '; --card-accent:' + accent + '; --card-gradient:' + gradient + ';';
       var ageParts = m.age.split(' ');
       var ageNum = ageParts[0], ageUnit = ageParts.slice(1).join(' ');
-      var cta = isAdult(m)
+      var cta = (isAdult(m) && m.name !== 'Алтыншаш')
         ? '<div class="member-cta-row"><button type="button" class="member-cta" data-profile="' + i + '">Профиль</button></div>'
         : '';
       var photoInner = m.photo
